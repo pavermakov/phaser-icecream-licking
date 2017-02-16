@@ -10,6 +10,8 @@ export default class extends Phaser.State {
     // подгрузи ассеты для всей игры здесь
     this.load.image('arrow', 'assets/images/arrow.png');
     this.load.image('goalArrow', 'assets/images/goalArrow.png');
+    this.load.image('icecream', 'assets/images/icecream.png');
+    this.load.image('background', 'assets/images/chocolate.png');
 
     // по завершении загрузки ассетов, перейди в другой state
     this.load.onLoadComplete.add(() => {

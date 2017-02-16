@@ -24,6 +24,14 @@ export default class extends Phaser.State {
   }
 
   create() {
+    // задний фон
+    this.background = this.add.tileSprite(0, 0, this.world.width, this.world.height, 'background');
+
+    // создаём мороженное
+    this.icecream = this.add.sprite(this.world.centerX, this.world.centerY - 30, 'icecream');
+    this.icecream.anchor.setTo(0.5);
+    this.icecream.scale.setTo(1.5);
+
     // создаём стрелку-цель
     this.goalArrow = this.add.sprite(this.world.centerX, 50, 'goalArrow');
     this.physics.arcade.enable(this.goalArrow);
@@ -76,7 +84,16 @@ export default class extends Phaser.State {
   }
 
   _setGoalArrowDirection() {
-    this.add.tween(this.goalArrow).to({angle: this.gameData.nextArrow.angle}, 200, Phaser.Easing.Linear.None, true);
+    // пофиксить развороты стрелки-цели
+    let target = this.gameData.nextArrow.angle;
+
+    if(this.goalArrow.angle === 180 && this.gameData.nextArrow.direction === "up") {
+      this.goalArrow.angle = -180;
+    } else if(this.goalArrow.angle === -180 && this.gameData.nextArrow.direction === "down") {
+      this.goalArrow.angle = 180;
+    } 
+
+    this.add.tween(this.goalArrow).to({angle: target}, 200, Phaser.Easing.Linear.None, true);
   }
 
   _setNextArrow() {
