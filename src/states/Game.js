@@ -76,7 +76,6 @@ export default class extends Phaser.State {
   }
 
   _setGoalArrowDirection() {
-    // this.goalArrow.angle = this.gameData.nextArrow.angle;
     this.add.tween(this.goalArrow).to({angle: this.gameData.nextArrow.angle}, 200, Phaser.Easing.Linear.None, true);
   }
 
