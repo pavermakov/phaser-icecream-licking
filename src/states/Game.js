@@ -17,9 +17,20 @@ export default class extends Phaser.State {
         direction: 'right',
         angle: 0,
       }],
+      swipe:{
+        start: {
+          x: null,
+          y: null,
+        },
+        end: {
+          x: null,
+          y: null,
+        },
+        leeway: 80,
+      },
       nextArrow: null,
-      gameVelocity: -120,
-      arrowFrequency: 1500,
+      gameVelocity: -320,
+      arrowFrequency: 700,
     };
   }
 
@@ -51,6 +62,10 @@ export default class extends Phaser.State {
     this.arrowTimer = this.time.create(false);
     this.arrowTimer.loop(this.gameData.arrowFrequency, this._createArrow, this);
     this.arrowTimer.start();
+
+    // настраиваем свайпер
+    this.input.onDown.add(this._startSwipe, this);
+    this.input.onUp.add(this._getSwipeDirection, this);
   }
 
   update() {
@@ -70,7 +85,6 @@ export default class extends Phaser.State {
     arrow.angle = arrowParam.angle;
     arrow.anchor.setTo(0.5);
     arrow.body.velocity.y = this.gameData.gameVelocity;
-
   }
 
   _checkOverlap(goalArrow, arrow) {
@@ -84,20 +98,52 @@ export default class extends Phaser.State {
   }
 
   _setGoalArrowDirection() {
-    // пофиксить развороты стрелки-цели
     let target = this.gameData.nextArrow.angle;
 
-    if(this.goalArrow.angle === 180 && this.gameData.nextArrow.direction === "up") {
-      this.goalArrow.angle = -180;
-    } else if(this.goalArrow.angle === -180 && this.gameData.nextArrow.direction === "down") {
-      this.goalArrow.angle = 180;
-    } 
+    if(this.goalArrow.angle === -180 && target === 90) {
+      // костыль :(
+      this.goalArrow.angle = 179;
+    } else if(this.goalArrow.angle === 90 && target === -180) {
+      target = 180;
+    }
 
     this.add.tween(this.goalArrow).to({angle: target}, 200, Phaser.Easing.Linear.None, true);
   }
 
   _setNextArrow() {
     this.gameData.nextArrow = this.arrows.getClosestTo(this.goalArrow);
+  }
+
+  _startSwipe(input) {
+    this.gameData.swipe.start.x = input.x;
+    this.gameData.swipe.start.y = input.y;
+  }
+
+  _getSwipeDirection(input) {
+    this.gameData.swipe.end.x = input.x;
+    this.gameData.swipe.end.y = input.y;
+
+    const xDiff = Math.abs(this.gameData.swipe.end.x - this.gameData.swipe.start.x);
+    const yDiff = Math.abs(this.gameData.swipe.end.y - this.gameData.swipe.start.y);
+    const leeway = this.gameData.leeway;
+
+    if(xDiff < leeway && yDiff < leeway) {
+      return;
+    }
+
+    if(yDiff < xDiff) {
+      if(this.gameData.swipe.end.x < this.gameData.swipe.start.x) {
+        console.log('<- Horizontal Swipe Left');
+      } else {
+        console.log('-> Horizontal Swipe Right');
+      }
+    } else {
+      if(this.gameData.swipe.end.y < this.gameData.swipe.start.y) {
+        console.log('^ Vertical Swipe Up');
+      } else {
+        console.log('v Vertical Swipe Down');
+      }
+    }
   }
 
 }
