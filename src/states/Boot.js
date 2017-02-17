@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 
 export default class extends Phaser.State {
   init() {
-    this.stage.backgroundColor = '#BADA55';
+    this.stage.backgroundColor = '#fff';
     this.game.physics.startSystem(Phaser.Physics.ARCADE);
     this.game.physics.setBoundsToWorld();
     this.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
