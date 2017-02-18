@@ -20,6 +20,9 @@ export default class extends Phaser.State {
 
     this.load.spritesheet('buttons', 'assets/images/buttons.png', 70, 70);
 
+    this.load.audio('success', ['assets/sounds/success.mp3', 'assets/sounds/success.ogg']);
+    this.load.audio('fail', ['assets/sounds/fail.mp3', 'assets/sounds/fail.ogg']);
+
     // по завершении загрузки ассетов, перейди в другой state
     this.load.onLoadComplete.add(() => {
       this.state.start('Menu');

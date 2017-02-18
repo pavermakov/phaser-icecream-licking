@@ -15,10 +15,11 @@ export default class extends Phaser.State {
           y: null,
         },
         leeway: 40,
-      },
-      nextArrow: null,
+      },    
       gameVelocity: -150,
       arrowFrequency: 1200,
+      nextIndex: 0,
+      upcomingArrow: null,
       isOverlapping: false,
       isPaused: false,
       isGameOver: false,
@@ -32,6 +33,7 @@ export default class extends Phaser.State {
   create() {
     // задний фон
     this.background = this.add.tileSprite(0, 0, this.world.width, this.world.height, 'background');
+    this.background.alpha = '0.5';
 
     // создаём мороженное
     this.icecream = this.add.sprite(this.world.centerX, 0, 'icecream');
@@ -49,7 +51,7 @@ export default class extends Phaser.State {
     this.arrows = this.add.group();
     this.arrows.enableBody = true;
     this._createArrow();
-    this._setNextArrow();
+    this._setUpcomingArrow();
 
     // стрелка-цель должна смотреть в ту же сторону, что и следующая стрелка
     this._setGoalArrowDirection();
@@ -78,7 +80,7 @@ export default class extends Phaser.State {
     this.pause.frame = 0;
 
     // кнопка управления звуком
-    this.soundControl = this.add.button(this.world.centerX + 35, this.foreground.centerY, 'buttons');
+    this.soundControl = this.add.button(this.world.centerX + 35, this.foreground.centerY, 'buttons', this._toggleSound, this);
     this.soundControl.scale.setTo(0.8);
     this.soundControl.anchor.setTo(0.5);
     this.soundControl.frame = this.game.sound.mute ? 2 : 1;
@@ -91,22 +93,25 @@ export default class extends Phaser.State {
     this.errorText.anchor.setTo(0.5);
     this.errorText.setStyle({ font: '20px Arial', fill: '#CF0808' });
 
-    // экран паузы
-    this.bmd = this.game.add.bitmapData(this.world.width, this.foreground.top);
-    this.bmd.fill(249, 234, 236, 0.92);
-    this.pausedLogo = this.make.sprite(this.world.centerX, this.foreground.top * 0.5, 'paused');
-    this.pausedLogo.scale.setTo(0.7);
-    this.pausedLogo.anchor.setTo(0.5);
-    this.bmd.draw(this.pausedLogo);
-    this.overlay = this.game.add.sprite(0, -this.foreground.top, this.bmd);
+    // сообщения об ошибке
+    this.errorMessages = this.add.group();
 
     // настраиваем свайпер
     this.input.onDown.add(this._startSwipe, this);
     this.input.onUp.add(this._getSwipeDirection, this);
+
+    // экран паузы
+    this.pauseOverlay = this._createOverlay('paused');
+    this.stopOverlay = this._createOverlay('gameOver');
+    this.stopOverlay.inputEnabled = true;
+
+    // Звуки
+    this.success = this.add.audio('success', 0.3, false);
+    this.fail = this.add.audio('fail', 0.3, false);
   }
 
   update() {
-    this.physics.arcade.overlap(this.goalArrow, this.arrows, this._handleArrowKill, this._checkOverlap, this);
+    this.physics.arcade.overlap(this.goalArrow, this.arrows, this._handleOverlap, null, this);
   }
 
   _createArrow() {
@@ -120,44 +125,47 @@ export default class extends Phaser.State {
     }
 
     arrow.angle = direction;
+    arrow.alpha = 1;
     arrow.anchor.setTo(0.5);
     arrow.scale.setTo(1.1);
+    arrow.checkWorldBounds = true;
     arrow.body.velocity.y = this.gameData.gameVelocity;
+    arrow.events.onOutOfBounds.add(this._handleOutOfBounds, this);
   }
 
-  _checkOverlap(goalArrow, arrow) {
+  _handleOverlap(goalArrow, arrow) {
     this.gameData.isOverlapping = true;
 
     if(arrow.centerY < goalArrow.top) {
-      this._handleSwipeError('Too late!');
-      return true;
+      if(arrow === this.gameData.upcomingArrow) {
+        this._handleError("Too Late!");
+        this._proceedToNext();       
+      } 
     }
-
-    return false;
   }
 
-  _handleArrowKill(goalArrow, arrow) {
-    arrow.kill();
-    this.gameData.isOverlapping = false;
-    this._setNextArrow();
-    this._setGoalArrowDirection();
+  _handleOutOfBounds(arrow) {
+    if(arrow.y < 0) {
+      arrow.kill();
+    }
   }
 
   _setGoalArrowDirection() {
-    let target = this.gameData.nextArrow.angle;
-
+    let target = this.gameData.upcomingArrow.angle;
+    // опять пофиксить
     if(this.goalArrow.angle === -180 && target === 90) {
       // костыль :(
       this.goalArrow.angle = 179;
     } else if(this.goalArrow.angle === 90 && target === -180) {
-      target = 180;
+      target = 179;
     }
 
     this.add.tween(this.goalArrow).to({angle: target}, 200, Phaser.Easing.Linear.None, true);
   }
 
-  _setNextArrow() {
-    this.gameData.nextArrow = this.arrows.getClosestTo(this.goalArrow);
+  _setUpcomingArrow() {
+    this.gameData.nextIndex = this.gameData.nextIndex + 1 === this.arrows.length ? 0 :  this.gameData.nextIndex + 1;
+    this.gameData.upcomingArrow = this.arrows.getAt(this.gameData.nextIndex);
   }
 
   _startSwipe(input) {
@@ -207,52 +215,104 @@ export default class extends Phaser.State {
   _handleSwipe(direction) {
     let errorMessage;
 
-    if(!this.gameData.isOverlapping || this.gameData.nextArrow.centerY > this.goalArrow.bottom) {
+    if(!this.gameData.isOverlapping || this.gameData.upcomingArrow.centerY > this.goalArrow.bottom) {
       errorMessage = "Too early!";
-    } else if(direction !== this.gameData.nextArrow.angle) {
+    } else if(direction !== this.gameData.upcomingArrow.angle) {
       errorMessage = "Wrong direction!"
     }
 
     if(errorMessage) {
-      this._handleSwipeError(errorMessage);
+      this._handleError(errorMessage);
     } else {
-      this._handleSwipeSuccess();
+      this._handleSuccess();  
+      this._proceedToNext();
     }
-
-    this._handleArrowKill(null, this.gameData.nextArrow);
   }
 
-  _handleSwipeError(msg) {
+  _proceedToNext() {
+    this.add.tween(this.gameData.upcomingArrow).to({ alpha: 0 }, 500, Phaser.Easing.Linear.None, true);
+    this._setUpcomingArrow();
+    this._setGoalArrowDirection();
+  }
+
+  _handleError(msg) {
+    const start = this.add.tween(this.gameData.upcomingArrow).to({ x: '+5'}, 50, Phaser.Easing.Linear.None, true);
+    const middle = this.add.tween(this.gameData.upcomingArrow).to({ x: '-10'}, 50, Phaser.Easing.Linear.None);
+    const end = this.add.tween(this.gameData.upcomingArrow).to({ x: '+5'}, 50, Phaser.Easing.Linear.None);
+    start.chain(middle, end);
+
+    this.fail.play();
     if(this.gameData.errors === 3) {
-      // this._gameOver();
+      this.gameData.isGameOver = true;
+      this._togglePause();
     } else {
       this.gameData.errors += 1;
       this.errorCounter.setText(`${this.gameData.errors} / 3`);
     }
+
   }
 
-  _handleSwipeSuccess(){
-    this.gameData.score += 1;
-    this.scoreCounter.setText(this.gameData.score);
+  _handleSuccess() {
+    this.success.play();
+    this.scoreCounter.setText(this.gameData.score++);
   }
 
   _togglePause() {
     if(!this.arrowTimer.paused) {
       this.gameData.isPaused = true;
       this.arrowTimer.pause();
-      this._toggleOverlay(0);
       this.arrows.setAll('body.enable', false);
+
+      if(this.gameData.isGameOver) {
+        this._disable(this.pause);
+        this._toggleOverlay(this.stopOverlay, 0, this._restart);
+      } else {
+        this._toggleOverlay(this.pauseOverlay, 0);
+      }
     } else {
       this.gameData.isPaused = false;
       this.arrowTimer.resume();
-      this._toggleOverlay(-this.foreground.top);
+      this._toggleOverlay(this.pauseOverlay, -this.foreground.top);
       this.arrows.setAll('body.enable', true);
     }
   }
 
-  _toggleOverlay(destination) {
-    this.add.tween(this.overlay).to({ y: destination }, 300, Phaser.Easing.Linear.None, true);
-
+  _toggleSound() {
+    this.sound.mute = !this.sound.mute;
+    this.soundControl.frame = this.sound.mute ? 2 : 1;
   }
 
+  _createOverlay(key) {
+    const bmd = this.add.bitmapData(this.world.width, this.foreground.top);
+    bmd.fill(249, 234, 236, 0.92);
+
+    const logo = this.make.sprite(this.world.centerX, this.foreground.top * 0.5, key);
+    logo.scale.setTo(0.7);
+    logo.anchor.setTo(0.5);
+
+    bmd.draw(logo);
+
+    return this.game.add.sprite(0, -this.foreground.top, bmd);
+  }
+
+  _toggleOverlay(target, destination, callback) {
+    const slide = this.add.tween(target).to({ y: destination }, 300, Phaser.Easing.Linear.None);
+
+    if(callback) {
+      slide.onComplete.add(() => {
+        target.events.onInputDown.addOnce(callback, this);
+      }, this);
+    }
+
+    slide.start();
+  }
+
+  _disable(obj) {
+    obj.inputEnabled = false;
+    obj.alpha = '0.5';
+  }
+
+  _restart() {
+    this.state.start('Game');
+  }
 }
