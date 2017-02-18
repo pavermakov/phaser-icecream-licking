@@ -8,6 +8,7 @@ export default class extends Phaser.State {
     this.background.autoScroll(10, 40);
 
     this.logo = this.add.sprite(this.world.centerX, this.world.height * 0.25, 'logo');
+    this.logo.scale.setTo(1.2);
     this.logo.anchor.setTo(0.5);
 
     this.action = this.add.sprite(this.world.centerX, this.world.height * 0.75, 'action');
