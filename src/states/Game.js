@@ -15,9 +15,10 @@ export default class extends Phaser.State {
           y: null,
         },
         leeway: 40,
-      },    
-      gameVelocity: -150,
-      arrowFrequency: 1200,
+      },
+      successPhrases:['good job!', 'well done!', 'you are natural!', 'terrific!', 'outstanding!'],   
+      gameVelocity: 150,
+      arrowFrequency: 1300,
       nextIndex: 0,
       upcomingArrow: null,
       isOverlapping: false,
@@ -36,16 +37,22 @@ export default class extends Phaser.State {
     this.background.alpha = '0.5';
 
     // создаём мороженное
-    this.icecream = this.add.sprite(this.world.centerX, 0, 'icecream');
-    this.icecream.anchor.setTo(0.5, 0);
-    this.icecream.scale.setTo(1.6);
+    this.icecream = this.add.sprite(this.world.centerX, this.world.height, 'icecream');
+    this.icecream.anchor.setTo(0.5, 1);
+
+    // путь движения стрелок
+    this.path = this.add.graphics(0, 0);
+    this.path.beginFill(0xffe9bb, 0.4);
+    this.path.drawRect(0, 0, 70, this.world.height);
+    this.path.endFill();
+    this.path.alignTo(this.world.bounds, Phaser.TOP_CENTER, null, -this.world.height)
 
     // создаём стрелку-цель
-    this.goalArrow = this.add.sprite(this.world.centerX, this.icecream.top + 150, 'goalArrow');
+    this.goalArrow = this.add.sprite(this.world.centerX, this.icecream.centerY - 30, 'goalArrow');
     this.physics.arcade.enable(this.goalArrow);
     this.goalArrow.anchor.setTo(0.5);
     this.goalArrow.scale.setTo(1.1);
-    this.goalArrow.alpha = '0.6';
+    this.goalArrow.alpha = '0.65';
 
     // создаём вертикальные стрелки
     this.arrows = this.add.group();
@@ -56,11 +63,6 @@ export default class extends Phaser.State {
     // стрелка-цель должна смотреть в ту же сторону, что и следующая стрелка
     this._setGoalArrowDirection();
 
-    // таймер, контролирующий появление стрелок
-    this.arrowTimer = this.time.create(false);
-    this.arrowTimer.loop(this.gameData.arrowFrequency, this._createArrow, this);
-    this.arrowTimer.start();
-
     // задний фон для интерфейса
     this.foreground = this.add.tileSprite(0, this.world.height, this.world.width, this.world.width / 3.5, 'foreground');
     this.foreground.anchor.setTo(0, 1);
@@ -69,9 +71,10 @@ export default class extends Phaser.State {
     this.scoreCounter = this.add.text(50, this.foreground.centerY + 20, '0');
     this.scoreCounter.anchor.setTo(0.5);
     this.scoreCounter.setStyle({ font: '30px Arial', fill: '#1a9c97' });
-    this.scoreText = this.add.text(this.scoreCounter.x, this.foreground.centerY - 15, 'Score:');
+    
+    this.scoreText = this.add.bitmapText(this.scoreCounter.x, this.foreground.centerY - 15, 'gecko', 'Score:', 30);
     this.scoreText.anchor.setTo(0.5);
-    this.scoreText.setStyle({ font: '20px Arial', fill: '#1a9c97' });
+    this.scoreText.tint = 0x339999;
 
     // кнопка паузы
     this.pause = this.add.button(this.world.centerX - 35, this.foreground.centerY, 'buttons', this._togglePause, this);
@@ -89,12 +92,13 @@ export default class extends Phaser.State {
     this.errorCounter = this.game.add.text(this.world.width - 60, this.foreground.centerY + 20, '0 / 3');
     this.errorCounter.anchor.setTo(0.5);
     this.errorCounter.setStyle({ font: '30px Arial', fill: '#CF0808' });
-    this.errorText = this.game.add.text(this.errorCounter.x, this.foreground.centerY - 15, 'Errors:');
-    this.errorText.anchor.setTo(0.5);
-    this.errorText.setStyle({ font: '20px Arial', fill: '#CF0808' });
 
-    // сообщения об ошибке
-    this.errorMessages = this.add.group();
+    this.errorText = this.game.add.bitmapText(this.errorCounter.x, this.foreground.centerY - 15, 'gecko', 'Errors:', 30);
+    this.errorText.anchor.setTo(0.5);
+    this.errorText.tint = 0xCF0808;
+
+    // всплывающие сообщения
+    this.screenMessages = this.add.group();
 
     // настраиваем свайпер
     this.input.onDown.add(this._startSwipe, this);
@@ -108,6 +112,21 @@ export default class extends Phaser.State {
     // Звуки
     this.success = this.add.audio('success', 0.3, false);
     this.fail = this.add.audio('fail', 0.3, false);
+
+    if(!this.backgroundSound || !this.backgroundSound.isPlaying){
+      this.backgroundSound = this.add.audio('background', 0.5, true);
+      this.backgroundSound.play();
+    }
+
+    // таймер, контролирующий появление стрелок
+    this.arrowTimer = this.time.create(false);
+    this.arrowTimer.loop(this.gameData.arrowFrequency, this._createArrow, this);
+    this.arrowTimer.start();
+
+    // таймер, контролирующий скорость игры
+    this.gameTimer = this.time.create(false);
+    this.gameTimer.loop(Phaser.Timer.SECOND * 3, this._levelUp, this);
+    this.gameTimer.start();
   }
 
   update() {
@@ -117,26 +136,38 @@ export default class extends Phaser.State {
   _createArrow() {
     let arrow = this.arrows.getFirstExists(false);
     const direction = this.rnd.pick(this.gameData.directions);
+    const y = -this.cache.getImage('arrow').height;
 
     if(!arrow) {
-      arrow = this.arrows.create(this.world.centerX, this.world.height + 20, 'arrow');
+      arrow = this.arrows.create(this.world.centerX, y, 'arrow');
     } else {
-      arrow.reset(this.world.centerX, this.world.height + 20);
+      arrow.reset(this.world.centerX, y);
     }
 
     arrow.angle = direction;
     arrow.alpha = 1;
     arrow.anchor.setTo(0.5);
-    arrow.scale.setTo(1.1);
+    arrow.scale.setTo(0.5);
     arrow.checkWorldBounds = true;
     arrow.body.velocity.y = this.gameData.gameVelocity;
     arrow.events.onOutOfBounds.add(this._handleOutOfBounds, this);
   }
 
+  _levelUp() {
+    if(this.arrows.length < 5) {    
+      this.arrowTimer.events[0].delay *= 0.95;
+      this.gameData.gameVelocity *= 1.05; 
+    } else {
+      this.arrowTimer.events[0].delay *= 0.9;
+    }
+
+    this.arrows.setAll('body.velocity.y', this.gameData.gameVelocity);
+  }
+
   _handleOverlap(goalArrow, arrow) {
     this.gameData.isOverlapping = true;
 
-    if(arrow.centerY < goalArrow.top) {
+    if(arrow.centerY > goalArrow.bottom) {
       if(arrow === this.gameData.upcomingArrow) {
         this._handleError("Too Late!");
         this._proceedToNext();       
@@ -145,7 +176,7 @@ export default class extends Phaser.State {
   }
 
   _handleOutOfBounds(arrow) {
-    if(arrow.y < 0) {
+    if(arrow.y > this.game.height) {
       arrow.kill();
     }
   }
@@ -215,14 +246,17 @@ export default class extends Phaser.State {
   _handleSwipe(direction) {
     let errorMessage;
 
-    if(!this.gameData.isOverlapping || this.gameData.upcomingArrow.centerY > this.goalArrow.bottom) {
+    if(!this.gameData.isOverlapping || this.gameData.upcomingArrow.centerY < this.goalArrow.top) {
       errorMessage = "Too early!";
     } else if(direction !== this.gameData.upcomingArrow.angle) {
-      errorMessage = "Wrong direction!"
+      errorMessage = "Wrong direction!";
     }
 
     if(errorMessage) {
       this._handleError(errorMessage);
+      if(!this.gameData.upcomingArrow.body.touching.none) {
+        this._proceedToNext();
+      }
     } else {
       this._handleSuccess();  
       this._proceedToNext();
@@ -236,10 +270,8 @@ export default class extends Phaser.State {
   }
 
   _handleError(msg) {
-    const start = this.add.tween(this.gameData.upcomingArrow).to({ x: '+5'}, 50, Phaser.Easing.Linear.None, true);
-    const middle = this.add.tween(this.gameData.upcomingArrow).to({ x: '-10'}, 50, Phaser.Easing.Linear.None);
-    const end = this.add.tween(this.gameData.upcomingArrow).to({ x: '+5'}, 50, Phaser.Easing.Linear.None);
-    start.chain(middle, end);
+    this._shake(this.gameData.upcomingArrow);
+    this._showMessage(true, msg);
 
     this.fail.play();
     if(this.gameData.errors === 3) {
@@ -249,12 +281,12 @@ export default class extends Phaser.State {
       this.gameData.errors += 1;
       this.errorCounter.setText(`${this.gameData.errors} / 3`);
     }
-
   }
 
   _handleSuccess() {
     this.success.play();
-    this.scoreCounter.setText(this.gameData.score++);
+    this._showMessage(false, this.rnd.pick(this.gameData.successPhrases));
+    this.scoreCounter.text = this.gameData.score++;
   }
 
   _togglePause() {
@@ -265,6 +297,7 @@ export default class extends Phaser.State {
 
       if(this.gameData.isGameOver) {
         this._disable(this.pause);
+        this.gameTimer.stop();
         this._toggleOverlay(this.stopOverlay, 0, this._restart);
       } else {
         this._toggleOverlay(this.pauseOverlay, 0);
@@ -310,6 +343,27 @@ export default class extends Phaser.State {
   _disable(obj) {
     obj.inputEnabled = false;
     obj.alpha = '0.5';
+  }
+
+  _shake(obj) {
+    const shakeStart = this.add.tween(obj).to({ x: '+5'}, 50, Phaser.Easing.Linear.None, true);
+    const shakeMiddle = this.add.tween(obj).to({ x: '-10'}, 50, Phaser.Easing.Linear.None);
+    const shakeEnd = this.add.tween(obj).to({ x: '+5'}, 50, Phaser.Easing.Linear.None);
+    shakeStart.chain(shakeMiddle, shakeEnd);
+  }
+
+  _showMessage(isError, message) {
+    const x = isError ? this.world.width * 0.75 : this.world.width * 0.25;
+    const y = this.rnd.realInRange(this.world.centerY, 0);
+
+    const msg = this.add.bitmapText(x, y, 'gecko', message, 20);
+    msg.alpha = 0;
+    msg.anchor.setTo(0.5);
+    msg.tint = isError ? 0xCF0808 : 0x1a9c97;
+
+    const fadeStart = this.add.tween(msg).to({ alpha: 1 }, 450, Phaser.Easing.Linear.None, true);
+    const fadeEnd = this.add.tween(msg).to({ alpha: 0 }, 350, Phaser.Easing.Linear.None);
+    fadeStart.chain(fadeEnd);
   }
 
   _restart() {
