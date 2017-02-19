@@ -20,8 +20,11 @@ export default class extends Phaser.State {
 
     this.load.spritesheet('buttons', 'assets/images/buttons.png', 70, 70);
 
+    this.load.audio('background', ['assets/sounds/background.mp3', 'assets/sounds/background.ogg']);
     this.load.audio('success', ['assets/sounds/success.mp3', 'assets/sounds/success.ogg']);
     this.load.audio('fail', ['assets/sounds/fail.mp3', 'assets/sounds/fail.ogg']);
+
+    this.load.bitmapFont('gecko', 'assets/fonts/gecko/gecko.png', 'assets/fonts/gecko/gecko.fnt');
 
     // по завершении загрузки ассетов, перейди в другой state
     this.load.onLoadComplete.add(() => {
