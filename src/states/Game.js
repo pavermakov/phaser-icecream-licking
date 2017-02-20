@@ -288,7 +288,7 @@ export default class extends Phaser.State {
   _handleSuccess() {
     this.success.play();
     this._showMessage(false, this.rnd.pick(this.gameData.successPhrases));
-    this.scoreCounter.text = this.gameData.score + 1;
+    this.scoreCounter.text = ++this.gameData.score;
   }
 
   _togglePause() {
