@@ -264,6 +264,7 @@ export default class extends Phaser.State {
   }
 
   _proceedToNext() {
+    this.gameData.isOverlapping = false;
     this.add.tween(this.gameData.upcomingArrow).to({ alpha: 0 }, 500, Phaser.Easing.Linear.None, true);
     this._setUpcomingArrow();
     this._setGoalArrowDirection();
