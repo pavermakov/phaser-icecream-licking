@@ -16,7 +16,7 @@ export default class extends Phaser.State {
         },
         leeway: 40,
       },
-      successPhrases:['good job!', 'well done!', 'you are natural!', 'terrific!', 'outstanding!'],   
+      successPhrases:['good job!', 'well done!', 'you are natural!', 'terrific!', 'outstanding!'],
       gameVelocity: 150,
       arrowFrequency: 1300,
       nextIndex: 0,
@@ -64,14 +64,14 @@ export default class extends Phaser.State {
     this._setGoalArrowDirection();
 
     // задний фон для интерфейса
-    this.foreground = this.add.tileSprite(0, this.world.height, this.world.width, this.world.width / 3.5, 'foreground');
+    this.foreground = this.add.tileSprite(0, this.world.height, this.world.width, Math.floor(this.world.width * 0.35), 'foreground');
     this.foreground.anchor.setTo(0, 1);
 
     // счетчик очков
     this.scoreCounter = this.add.text(50, this.foreground.centerY + 20, '0');
     this.scoreCounter.anchor.setTo(0.5);
     this.scoreCounter.setStyle({ font: '30px Arial', fill: '#1a9c97' });
-    
+
     this.scoreText = this.add.bitmapText(this.scoreCounter.x, this.foreground.centerY - 15, 'gecko', 'Score:', 30);
     this.scoreText.anchor.setTo(0.5);
     this.scoreText.tint = 0x339999;
@@ -147,16 +147,17 @@ export default class extends Phaser.State {
     arrow.angle = direction;
     arrow.alpha = 1;
     arrow.anchor.setTo(0.5);
-    arrow.scale.setTo(0.5);
     arrow.checkWorldBounds = true;
     arrow.body.velocity.y = this.gameData.gameVelocity;
     arrow.events.onOutOfBounds.add(this._handleOutOfBounds, this);
+
+    console.log(this.arrows.length)
   }
 
   _levelUp() {
-    if(this.arrows.length < 5) {    
+    if(this.arrows.length < 5) {
       this.arrowTimer.events[0].delay *= 0.95;
-      this.gameData.gameVelocity *= 1.05; 
+      this.gameData.gameVelocity *= 1.05;
     } else {
       this.arrowTimer.events[0].delay *= 0.9;
     }
@@ -170,8 +171,8 @@ export default class extends Phaser.State {
     if(arrow.centerY > goalArrow.bottom) {
       if(arrow === this.gameData.upcomingArrow) {
         this._handleError("Too Late!");
-        this._proceedToNext();       
-      } 
+        this._proceedToNext();
+      }
     }
   }
 
@@ -258,7 +259,7 @@ export default class extends Phaser.State {
         this._proceedToNext();
       }
     } else {
-      this._handleSuccess();  
+      this._handleSuccess();
       this._proceedToNext();
     }
   }
@@ -286,7 +287,7 @@ export default class extends Phaser.State {
   _handleSuccess() {
     this.success.play();
     this._showMessage(false, this.rnd.pick(this.gameData.successPhrases));
-    this.scoreCounter.text = this.gameData.score++;
+    this.scoreCounter.text = this.gameData.score + 1;
   }
 
   _togglePause() {
@@ -319,7 +320,7 @@ export default class extends Phaser.State {
     const bmd = this.add.bitmapData(this.world.width, this.foreground.top);
     bmd.fill(249, 234, 236, 0.92);
 
-    const logo = this.make.sprite(this.world.centerX, this.foreground.top * 0.5, key);
+    const logo = this.make.sprite(this.world.centerX, Math.floor(this.foreground.top * 0.5), key);
     logo.scale.setTo(0.7);
     logo.anchor.setTo(0.5);
 
@@ -353,7 +354,7 @@ export default class extends Phaser.State {
   }
 
   _showMessage(isError, message) {
-    const x = isError ? this.world.width * 0.75 : this.world.width * 0.25;
+    const x = isError ? Math.floor(this.world.width * 0.75) : Math.floor(this.world.width * 0.25);
     const y = this.rnd.realInRange(this.world.centerY, 0);
 
     const msg = this.add.bitmapText(x, y, 'gecko', message, 20);

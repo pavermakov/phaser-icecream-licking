@@ -6,7 +6,7 @@ import GameState from './states/Game';
 
 class Game extends Phaser.Game {
 
-  constructor () {
+  constructor() {
     const gameWidth = window.innerWidth * window.devicePixelRatio;
     const gameHeight = window.innerHeight * window.devicePixelRatio;
     const docElement = document.documentElement;
