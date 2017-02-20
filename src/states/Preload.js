@@ -2,12 +2,10 @@ import Phaser from 'phaser';
 
 export default class extends Phaser.State {
   preload() {
-    // индикатор загрузки
     this.preloadBar = this.add.sprite(this.game.world.centerX, this.game.world.centerY, 'bar');
     this.preloadBar.anchor.setTo(0.5);
     this.load.setPreloadSprite(this.preloadBar);
 
-    // подгрузи ассеты для всей игры здесь
     this.load.image('logo', 'assets/images/logo.png');
     this.load.image('action', 'assets/images/action.png');
     this.load.image('paused', 'assets/images/paused.png');
@@ -26,7 +24,6 @@ export default class extends Phaser.State {
 
     this.load.bitmapFont('gecko', 'assets/fonts/gecko/gecko.png', 'assets/fonts/gecko/gecko.fnt');
 
-    // по завершении загрузки ассетов, перейди в другой state
     this.load.onLoadComplete.add(() => {
       this.state.start('Menu');
     }, this);

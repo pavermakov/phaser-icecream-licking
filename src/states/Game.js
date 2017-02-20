@@ -32,42 +32,34 @@ export default class extends Phaser.State {
   }
 
   create() {
-    // задний фон
     this.background = this.add.tileSprite(0, 0, this.world.width, this.world.height, 'background');
     this.background.alpha = '0.5';
 
-    // создаём мороженное
     this.icecream = this.add.sprite(this.world.centerX, this.world.height, 'icecream');
     this.icecream.anchor.setTo(0.5, 1);
 
-    // путь движения стрелок
     this.path = this.add.graphics(0, 0);
     this.path.beginFill(0xffe9bb, 0.4);
     this.path.drawRect(0, 0, 70, this.world.height);
     this.path.endFill();
     this.path.alignTo(this.world.bounds, Phaser.TOP_CENTER, null, -this.world.height)
 
-    // создаём стрелку-цель
     this.goalArrow = this.add.sprite(this.world.centerX, this.icecream.centerY - 30, 'goalArrow');
     this.physics.arcade.enable(this.goalArrow);
     this.goalArrow.anchor.setTo(0.5);
     this.goalArrow.scale.setTo(1.1);
     this.goalArrow.alpha = '0.65';
 
-    // создаём вертикальные стрелки
     this.arrows = this.add.group();
     this.arrows.enableBody = true;
     this._createArrow();
     this._setUpcomingArrow();
 
-    // стрелка-цель должна смотреть в ту же сторону, что и следующая стрелка
     this._setGoalArrowDirection();
 
-    // задний фон для интерфейса
     this.foreground = this.add.tileSprite(0, this.world.height, this.world.width, Math.floor(this.world.width * 0.35), 'foreground');
     this.foreground.anchor.setTo(0, 1);
 
-    // счетчик очков
     this.scoreCounter = this.add.text(50, this.foreground.centerY + 20, '0');
     this.scoreCounter.anchor.setTo(0.5);
     this.scoreCounter.setStyle({ font: '30px Arial', fill: '#1a9c97' });
@@ -76,19 +68,16 @@ export default class extends Phaser.State {
     this.scoreText.anchor.setTo(0.5);
     this.scoreText.tint = 0x339999;
 
-    // кнопка паузы
     this.pause = this.add.button(this.world.centerX - 35, this.foreground.centerY, 'buttons', this._togglePause, this);
     this.pause.scale.setTo(0.8);
     this.pause.anchor.setTo(0.5);
     this.pause.frame = 0;
 
-    // кнопка управления звуком
     this.soundControl = this.add.button(this.world.centerX + 35, this.foreground.centerY, 'buttons', this._toggleSound, this);
     this.soundControl.scale.setTo(0.8);
     this.soundControl.anchor.setTo(0.5);
     this.soundControl.frame = this.game.sound.mute ? 2 : 1;
 
-    // счётчик ошибок
     this.errorCounter = this.game.add.text(this.world.width - 60, this.foreground.centerY + 20, '0 / 3');
     this.errorCounter.anchor.setTo(0.5);
     this.errorCounter.setStyle({ font: '30px Arial', fill: '#CF0808' });
@@ -97,19 +86,15 @@ export default class extends Phaser.State {
     this.errorText.anchor.setTo(0.5);
     this.errorText.tint = 0xCF0808;
 
-    // всплывающие сообщения
     this.screenMessages = this.add.group();
 
-    // настраиваем свайпер
     this.input.onDown.add(this._startSwipe, this);
     this.input.onUp.add(this._getSwipeDirection, this);
 
-    // экран паузы
     this.pauseOverlay = this._createOverlay('paused');
     this.stopOverlay = this._createOverlay('gameOver');
     this.stopOverlay.inputEnabled = true;
 
-    // Звуки
     this.success = this.add.audio('success', 0.3, false);
     this.fail = this.add.audio('fail', 0.3, false);
 
@@ -118,12 +103,10 @@ export default class extends Phaser.State {
       this.backgroundSound.play();
     }
 
-    // таймер, контролирующий появление стрелок
     this.arrowTimer = this.time.create(false);
     this.arrowTimer.loop(this.gameData.arrowFrequency, this._createArrow, this);
     this.arrowTimer.start();
 
-    // таймер, контролирующий скорость игры
     this.gameTimer = this.time.create(false);
     this.gameTimer.loop(Phaser.Timer.SECOND * 3, this._levelUp, this);
     this.gameTimer.start();
@@ -150,8 +133,6 @@ export default class extends Phaser.State {
     arrow.checkWorldBounds = true;
     arrow.body.velocity.y = this.gameData.gameVelocity;
     arrow.events.onOutOfBounds.add(this._handleOutOfBounds, this);
-
-    console.log(this.arrows.length)
   }
 
   _levelUp() {
@@ -184,9 +165,8 @@ export default class extends Phaser.State {
 
   _setGoalArrowDirection() {
     let target = this.gameData.upcomingArrow.angle;
-    // опять пофиксить
+    // fix it!
     if(this.goalArrow.angle === -180 && target === 90) {
-      // костыль :(
       this.goalArrow.angle = 179;
     } else if(this.goalArrow.angle === 90 && target === -180) {
       target = 179;
