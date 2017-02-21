@@ -150,8 +150,6 @@ export default class extends Phaser.State {
     arrow.checkWorldBounds = true;
     arrow.body.velocity.y = this.gameData.gameVelocity;
     arrow.events.onOutOfBounds.add(this._handleOutOfBounds, this);
-
-    console.log(this.arrows.length)
   }
 
   _levelUp() {
